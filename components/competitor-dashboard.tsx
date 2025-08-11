@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Download, Plus, Trash2, Search, TrendingUp, AlertTriangle, Lightbulb } from "lucide-react"
+import { Download, Plus, Trash2, Search, TrendingUp, AlertTriangle, Lightbulb, Info } from "lucide-react"
 import type { Analysis, CompetitorData } from "@/lib/types"
 
 export function CompetitorDashboard() {
@@ -14,6 +14,7 @@ export function CompetitorDashboard() {
   const [title, setTitle] = useState("")
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isDemoMode, setIsDemoMode] = useState(false)
 
   const addUrlField = () => {
     setUrls([...urls, ""])
@@ -34,6 +35,8 @@ export function CompetitorDashboard() {
     if (validUrls.length === 0) return
 
     setIsAnalyzing(true)
+    setIsDemoMode(false)
+
     try {
       const response = await fetch("/api/analyze", {
         method: "POST",
@@ -41,12 +44,21 @@ export function CompetitorDashboard() {
         body: JSON.stringify({ urls: validUrls, title }),
       })
 
+      const result = await response.json()
+
       if (response.ok) {
-        const result = await response.json()
         setAnalysis(result)
+
+        // Check if this is demo mode
+        if (result.title.includes("Demo") || result.title.includes("API Key Required")) {
+          setIsDemoMode(true)
+        }
+      } else {
+        alert(`Error: ${result.error || "Failed to analyze competitors"}`)
       }
     } catch (error) {
       console.error("Analysis failed:", error)
+      alert("Network error: Failed to connect to the analysis service")
     } finally {
       setIsAnalyzing(false)
     }
@@ -70,9 +82,12 @@ export function CompetitorDashboard() {
         a.download = `${analysis.title}.${format}`
         a.click()
         window.URL.revokeObjectURL(url)
+      } else {
+        alert("Export failed. Please try again.")
       }
     } catch (error) {
       console.error("Export failed:", error)
+      alert("Export failed. Please try again.")
     }
   }
 
@@ -82,6 +97,25 @@ export function CompetitorDashboard() {
         <h1 className="text-3xl font-bold text-gray-900 mb-2">AI Competitor Analysis</h1>
         <p className="text-gray-600">Analyze your competitors automatically with AI-powered insights</p>
       </div>
+
+      {isDemoMode && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-semibold text-blue-900 mb-1">Demo Mode Active</h3>
+                <p className="text-sm text-blue-800">
+                  You're viewing sample data. To analyze real competitors, add your OpenAI API key to the environment
+                  variables.
+                  <br />
+                  <span className="font-medium">Set OPENAI_API_KEY in your .env.local file.</span>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {!analysis ? (
         <Card>
@@ -123,6 +157,13 @@ export function CompetitorDashboard() {
                   Add Another URL
                 </Button>
               </div>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600">
+                <strong>Note:</strong> Without an OpenAI API key, the app will show demo data. Add your API key to
+                analyze real competitor websites.
+              </p>
             </div>
 
             <Button
@@ -308,11 +349,16 @@ function CompetitorCard({ competitor }: { competitor: CompetitorData }) {
           <div>
             <h4 className="font-semibold text-sm mb-2">Key Features</h4>
             <div className="flex flex-wrap gap-1">
-              {competitor.features.slice(0, 6).map((feature, index) => (
+              {competitor.features.slice(0, 8).map((feature, index) => (
                 <Badge key={index} variant="outline" className="text-xs">
                   {feature}
                 </Badge>
               ))}
+              {competitor.features.length > 8 && (
+                <Badge variant="outline" className="text-xs">
+                  +{competitor.features.length - 8} more
+                </Badge>
+              )}
             </div>
           </div>
         )}

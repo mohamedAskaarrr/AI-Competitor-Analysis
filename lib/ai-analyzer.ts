@@ -18,6 +18,10 @@ export class AIAnalyzer {
     threats: string[]
     recommendations: string[]
   }> {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("OpenAI API key is required")
+    }
+
     const competitorSummary = competitors.map((comp) => ({
       name: comp.name,
       description: comp.description,
@@ -54,6 +58,10 @@ export class AIAnalyzer {
   }
 
   async enhanceCompetitorData(rawData: Partial<CompetitorData>): Promise<CompetitorData> {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("OpenAI API key is required")
+    }
+
     const { text: enhancedDescription } = await generateText({
       model: openai("gpt-4o"),
       prompt: `
